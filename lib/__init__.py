@@ -1,1 +1,1 @@
-# wp-ml-translate library
+# wp-translate-ai library

@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.0.0 — 2026-08-09
+
+### Major Rebranding & Universal Multi-Locale Architecture
+
+- **Rebranded to `wp-translate-ai`** — Primary entry point is `wp-translate-ai.py`. All documentation and internal modules updated.
+- **Universal Locale Architecture** — Support for any GlotPress locale via `--locale <code|slug>` (`ml`, `hi`, `fr`, `es`, `de`, `ja`, etc.).
+- **Automatic Glossary Scraper (`lib/glossary.py`)** — Added `fetch-glossary` command to pull official GlotPress glossaries dynamically into `context/locales/<locale>/glossary.json`.
+- **Hierarchical Prompt System** — Standardized base technical rules in `context/prompt-template.md` (English titles/rules) combined with locale-specific style guides in `context/locales/<locale>/prompt-template.md`.
+- **Agent Locale Initialization Workflow** — Updated `AGENTS.md` to allow AI agents to create new locales on demand (`add locale <code>`).
+- **Global Configuration (`config.json` & `lib/config.py`)** — Configuration manager for default locale settings, batch sizes, and user agent parameters.
+- **Trac Reference Link Extractor & On-Demand Inspection** — Scrapes exact WordPress Trac source URLs (`reference_url`) into `strings.json` for code inspection when strings are ambiguous.
+- **Locale-Scoped Data Directory Layout** — Restructured storage hierarchy to `data/<slug>/<locale>/` (`strings.json`, `prompt.md`, `response.json`), allowing simultaneous translation of the same project into multiple languages without data collisions.
+- **Benchmark Prompt Templates (`ml` & `hi`)** — Created benchmark native-script prompt templates for Malayalam (`ml`) and Hindi (`hi`) with style guides across 7 categories, formal register rules, mistake comparison tables, and HTML format preservation examples.
+- **Automated Test Suite (`tests/test_suite.py`)** — Included a 20-test E2E test suite in the repository workspace covering config resolution, glossary fetching, project scraping, status table rendering, translation batch generation, response applying, and browser helper UI APIs.
+- **Fetch `--limit` Flag** — `fetch` command now supports `--limit <N>` (or `--max <N>`) to cap the number of strings scraped, enabling fast partial fetches for large projects.
+- **Progressive Save During Fetch** — Fetcher now incrementally saves `strings.json` after each scraped page batch, preventing data loss if a long scrape is interrupted.
+- **Translation Preservation on Re-Fetch** — Re-fetching a project merges fresh strings with existing translations, ensuring previously translated/submitted strings are never lost.
+- **Agent Response & Next Steps Guidelines** — Updated `AGENTS.md` specifying concise high-level summaries without string dump listings, and mandatory actionable next steps prompting (e.g. submit helper / next batch).
+
 ## v1.1.0 — 2026-08-09
 
 ### Added & Improved
@@ -9,35 +28,8 @@
 - **Git ignore updates** — `.gitignore` updated to recursively exclude all generated project data subdirectories.
 - **Agent workflow updates** — `AGENTS.md` updated to direct agents to launch submission when 100% of strings are translated locally.
 
+---
+
 ## v1.0.0 — 2026-08-07
 
-
-Initial release of wp-ml-translate toolkit.
-
-### Features
-
-- **CLI tool** (`wp-ml-translate.py`) with commands: `init`, `fetch`, `translate`, `apply`, `submit`, `status`
-- **GlotPress fetcher** — scrapes pending ml_IN strings from any WordPress project (themes, plugins, core)
-- **URL parser** — accepts full URLs, locale URLs, type/slug paths, or bare slugs
-- **Translation engine** — generates AI prompts with rules, glossary, style guide, and context
-- **Response parser** — merges AI translation output back into project data
-- **Submit helper** — local browser UI for one-at-a-time GlotPress submission with clipboard copy and progress tracking
-- **Per-project data** — each project gets its own folder under `data/<slug>/`
-- **AI agent support** — `AGENTS.md` in root auto-loaded by IDEs (Cursor, Kiro, Antigravity, Windsurf, etc.)
-
-### Translation Quality
-
-- Prompt template enforces zero English script, natural Malayalam flow
-- Mandatory glossary with 35+ WordPress terms
-- Style guide per context type (UI labels, narratives, errors, meta)
-- Format preservation rules (punctuation, structure, placeholders)
-- Good/bad examples and common mistakes table
-
-### Documentation
-
-- `README.md` — quick start and example prompts
-- `AGENTS.md` — AI agent execution instructions
-- `docs/USAGE.md` — step-by-step workflow guide
-- `docs/SETUP.md` — prerequisites, installation, troubleshooting
-- `docs/ARCHITECTURE.md` — technical internals, data flow, components
-- `context/prompt-template.md` — full translation rules and glossary
+Initial release of translation toolkit.

@@ -1,156 +1,177 @@
 # Usage Guide
 
-Step-by-step guide for translating WordPress projects into Malayalam.
+Step-by-step guide for translating WordPress projects into any target language using **`wp-translate-ai`**.
 
 ---
 
 ## Workflow Overview
 
 ```
-fetch → translate → apply → (repeat if needed) → submit
+add-locale → fetch → translate → apply → (repeat if needed) → submit
 ```
 
 ---
 
-## 1. Fetch Pending Strings
+## 1. Add / Initialize a Target Locale (`add-locale`)
 
-Give a project URL or slug. The tool scrapes GlotPress and saves pending strings.
+Initialize a new language locale (e.g., Hindi `hi`, Spanish `es`, French `fr`, Malayalam `ml`):
 
 ```bash
-# By slug (assumes wp-themes)
-python3 wp-ml-translate.py fetch twentyten
+# Initialize Hindi (fetches official GlotPress glossary & creates prompt template)
+python3 wp-translate-ai.py add-locale hi
 
-# By type/slug
-python3 wp-ml-translate.py fetch wp-plugins/woocommerce
+# Or via create-locale alias
+python3 wp-translate-ai.py create-locale es
+```
 
-# By full URL
-python3 wp-ml-translate.py fetch "https://translate.wordpress.org/projects/wp-themes/twentyten/ml/default/"
+- Fetches official WordPress terminology into `context/locales/<locale>/glossary.json`.
+- Creates/populates a language guideline file `context/locales/<locale>/prompt-template.md` with native script examples, formal register rules, and mistake comparison tables modeled after the gold-standard `context/locales/ml/prompt-template.md`.
+
+---
+
+## 2. Fetch Pending Strings
+
+Give a project URL or slug. The tool scrapes GlotPress and saves pending strings for the target locale.
+
+```bash
+# Fetch with default locale (from config.json)
+python3 wp-translate-ai.py fetch twentyten
+
+# Fetch for a specific target locale
+python3 wp-translate-ai.py fetch wp-plugins/woocommerce --locale hi
+
+# By full GlotPress URL
+python3 wp-translate-ai.py fetch "https://translate.wordpress.org/projects/wp-themes/twentyten/ml/default/"
 
 # Multiple projects at once
-python3 wp-ml-translate.py fetch twentyten twentyeleven twentytwelve
+python3 wp-translate-ai.py fetch twentyten twentyeleven twentytwelve --locale ml
 ```
 
-Output: `data/<slug>/strings.json`
+Output: `data/<slug>/<locale>/strings.json`
 
 ---
 
-## 2. Generate Translation Prompt
+## 3. Generate Translation Prompt
 
-Creates a prompt file with rules + glossary + a batch of strings for AI to translate.
+Creates a prompt batch file containing language-specific rules, glossary terms, and pending strings.
 
 ```bash
-# Default batch of 10
-python3 wp-ml-translate.py translate twentyten
+# Default batch size (15 strings)
+python3 wp-translate-ai.py translate twentyten
 
-# Larger batch
-python3 wp-ml-translate.py translate twentyten --batch 20
+# Target specific locale
+python3 wp-translate-ai.py translate twentyten --locale hi
+
+# Custom batch size (e.g. 50 strings)
+python3 wp-translate-ai.py translate twentyten --batch 50
+
+# All pending strings in one go
+python3 wp-translate-ai.py translate twentyten --batch all
 ```
 
-Output: `data/<slug>/prompt.md`
+Output: `data/<slug>/<locale>/prompt.md` (inherits rules from `context/prompt-template.md` and `context/locales/<locale>/prompt-template.md`).
 
 ---
 
-## 3. Feed Prompt to AI
+## 4. Feed Prompt to AI
 
-### Option A: Using Kiro or AI-powered IDE
-Just type:
-```
+### Option A: Using AI IDE Agents (Cursor, Antigravity, Kiro, Windsurf, etc.)
+Just type naturally in your IDE chat:
+```text
 "Translate this: https://translate.wordpress.org/projects/wp-themes/twentyten/ml/default/"
+"Translate all pending strings for twentyten in one go"
+"Translate 50 pending strings for woocommerce"
+"Continue translating twentytwentyfour"
+"Add locale hi"
 ```
-The agent reads AGENTS.md and handles everything automatically.
+The agent reads `AGENTS.md` and executes the fetch/translate/apply cycle automatically.
 
-### Option B: Manual (any AI)
-1. Open `data/<slug>/prompt.md`
+### Option B: Manual (ChatGPT, Claude, Custom LLM)
+1. Open `data/<slug>/<locale>/prompt.md`
 2. Copy its full content
-3. Paste into Claude / ChatGPT / any AI
-4. Copy the JSON output
-5. Save as `data/<slug>/response.json`
+3. Paste into Claude / ChatGPT / any LLM
+4. Copy the JSON response array
+5. Save as `data/<slug>/<locale>/response.json`
 
 ---
 
-## 4. Apply Translations
+## 5. Apply Translations
 
-Merges the AI response into the project data.
+Merges the AI response back into the project data.
 
 ```bash
-python3 wp-ml-translate.py apply twentyten
+python3 wp-translate-ai.py apply twentyten
+# Or specify locale
+python3 wp-translate-ai.py apply twentyten --locale hi
 ```
 
-This updates `strings.json` — strings move from "pending" to "ready".
+This updates `data/<slug>/<locale>/strings.json` — strings move from `"pending"` to `"ready"`.
 
 ---
 
-## 5. Repeat If Needed
+## 6. Repeat Until Local Translation Completes
 
-If the project has more strings than one batch:
+If the project has more pending strings than one batch:
 
 ```bash
 # Check what's left
-python3 wp-ml-translate.py status twentyten
+python3 wp-translate-ai.py status twentyten
 
 # Generate next batch
-python3 wp-ml-translate.py translate twentyten --batch 20
+python3 wp-translate-ai.py translate twentyten --batch 20 --locale hi
 
-# ... feed to AI, save response ...
+# ... AI translates & saves data/<slug>/<locale>/response.json ...
 
-python3 wp-ml-translate.py apply twentyten
+python3 wp-translate-ai.py apply twentyten --locale hi
 ```
 
-Repeat until status shows 0 pending.
+When 100% of strings are translated locally, `translate` will notify you to launch `submit`.
 
 ---
 
-## 6. Submit to GlotPress
+## 7. Submit to GlotPress
 
-Once all strings are translated ("ready" status):
+Once strings are ready to submit:
 
 ```bash
-python3 wp-ml-translate.py submit twentyten
+python3 wp-translate-ai.py submit twentyten
+# Or specify locale explicitly
+python3 wp-translate-ai.py submit twentyten --locale hi
 ```
 
-This opens a browser UI at `http://localhost:8787`:
+This launches an interactive helper UI at `http://localhost:8787`:
 
-| Action | What happens |
-|--------|-------------|
-| Click "തുറക്കുക + കോപ്പി" (or press `O`) | Copies translation to clipboard + opens GlotPress page |
-| On GlotPress | Double-click string → Cmd+V paste → click "Suggest" |
-| Click "സമർപ്പിച്ചു → അടുത്തത്" (or press `N`) | Marks done, shows next string |
-| Click "ഒഴിവാക്കുക" (or press `S`) | Skips this string |
+| Keyboard Shortcut | Action | What happens |
+| :--- | :--- | :--- |
+| Press `O` | **Open & Copy** | Copies translation to clipboard + opens GlotPress edit string page |
+| On GlotPress | Double-click string → Cmd+V / Ctrl+V paste → click "Suggest" |
+| Press `N` | **Done → Next** | Marks string submitted and advances to next string |
+| Press `S` | **Skip** | Skips string for later review |
 
-Progress is saved automatically. You can Ctrl+C and resume later.
+Progress is saved automatically in `data/<slug>/<locale>/strings.json`. You can exit (`Ctrl+C`) and resume anytime.
 
 ---
 
-## 7. Check Status
+## 8. Check Status
 
 ```bash
-# All projects
-python3 wp-ml-translate.py status
+# View status across all local projects and target locales
+python3 wp-translate-ai.py status
 
-# Specific project
-python3 wp-ml-translate.py status twentyten
+# View status for a specific project
+python3 wp-translate-ai.py status twentyten
 ```
 
-Output shows: total strings, pending, translated, submitted.
+Output shows: Project slug, Target Locale, Total strings, Pending, Translated locally, and Submitted to GlotPress.
 
 ---
 
-## Interactive Setup
+## Interactive Wizard
 
-For first-time users, run the interactive wizard:
+For first-time users, run the setup wizard:
 
 ```bash
-python3 wp-ml-translate.py init
+python3 wp-translate-ai.py init
 ```
 
-It asks what type of project (theme/plugin/core/URL) and guides you through.
-
----
-
-## Tips
-
-- **Batch size**: 10-15 strings per batch gives best AI quality. Too large → quality drops.
-- **Review before submit**: Read through `strings.json` or use "review" agent prompt before submitting.
-- **Re-fetch**: Run fetch again to update stats and get any newly added strings.
-- **Multiple projects**: Fetch several, then translate one by one.
-- **Skipped strings**: They stay in the JSON. Come back to them anytime.
+It prompts for project type, slug/URL, and target locale setting.

@@ -4,12 +4,12 @@ GlotPress Translation Submission Helper
 
 A local web server that shows one translated string at a time.
 - Opens the GlotPress URL in a new browser tab
-- Copies the Malayalam translation to clipboard automatically
-- Click "Done → Next" to mark current as submitted and advance
+- Copies the translation to clipboard automatically
+- Click "Done -> Next" to mark current as submitted and advance
 - Progress is saved back to strings.json
 
 Usage (via main CLI):
-    python3 wp-ml-translate.py submit <slug> [--port 8787]
+    python3 wp-translate-ai.py submit <slug> [--port 8787]
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-def _load_strings(slug: str, data_dir: Path) -> tuple[dict, list[dict]]:
+def _load_strings(slug: str, data_dir: Path, locale: str = "") -> tuple[dict, list[dict]]:
     """Load project data and return (project_meta, ready_strings)."""
-    strings_file = data_dir / slug / "strings.json"
+    strings_file = data_dir / slug / locale / "strings.json"
     with open(strings_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -36,9 +36,9 @@ def _load_strings(slug: str, data_dir: Path) -> tuple[dict, list[dict]]:
     return project, ready
 
 
-def _save_submitted(slug: str, data_dir: Path, submitted_ids: set):
+def _save_submitted(slug: str, data_dir: Path, submitted_ids: set, locale: str = ""):
     """Mark strings as submitted in the strings.json file."""
-    strings_file = data_dir / slug / "strings.json"
+    strings_file = data_dir / slug / locale / "strings.json"
     with open(strings_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -51,13 +51,14 @@ def _save_submitted(slug: str, data_dir: Path, submitted_ids: set):
 
 
 def _build_html(slug: str, project: dict) -> str:
-    """Generate the single-page app HTML."""
+    """Build the submission helper HTML page."""
+    loc = project.get("locale", "target locale").upper()
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit: {slug} — ML Translation Helper</title>
+    <title>Submit: {slug} — WP Translation Helper</title>
     <style>
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
@@ -270,7 +271,7 @@ def _build_html(slug: str, project: dict) -> str:
                 </div>
 
                 <div class="card">
-                    <div class="card-label">Malayalam Translation</div>
+                    <div class="card-label">Target Translation ({loc})</div>
                     <div class="translation-text">${{transDisplay}}</div>
                 </div>
 
@@ -349,6 +350,7 @@ def _build_html(slug: str, project: dict) -> str:
 
 class _Handler(BaseHTTPRequestHandler):
     slug = ""
+    locale = ""
     data_dir = None
     strings = []
     current_index = 0
@@ -363,8 +365,7 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            project = {"slug": _Handler.slug}
-            html = _build_html(_Handler.slug, project)
+            html = _build_html(_Handler.slug, getattr(_Handler, "project", {}))
             self.wfile.write(html.encode("utf-8"))
         elif parsed.path == "/api/current":
             self._send_state()
@@ -385,7 +386,7 @@ class _Handler(BaseHTTPRequestHandler):
                        _Handler.strings[_Handler.current_index]["id"] in _Handler.submitted_ids):
                     _Handler.current_index += 1
                 # Persist
-                _save_submitted(_Handler.slug, _Handler.data_dir, _Handler.submitted_ids)
+                _save_submitted(_Handler.slug, _Handler.data_dir, _Handler.submitted_ids, locale=_Handler.locale)
             self._send_state()
         elif parsed.path == "/api/skip":
             _Handler.current_index += 1
@@ -412,11 +413,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(resp, ensure_ascii=False).encode("utf-8"))
 
 
-def run_server(slug: str, data_dir: Path, port: int = 8787):
+def run_server(slug: str, data_dir: Path, port: int = 8787, locale: str = ""):
     """Start the submission helper server for a project."""
-    print(f"\n  Loading translations for '{slug}'...")
+    print(f"\n  Loading translations for '{slug}' [{locale}]...")
 
-    project, ready_strings = _load_strings(slug, data_dir)
+    project, ready_strings = _load_strings(slug, data_dir, locale=locale)
 
     if not ready_strings:
         print("  No translated strings ready for submission.")
@@ -424,6 +425,8 @@ def run_server(slug: str, data_dir: Path, port: int = 8787):
         return
 
     _Handler.slug = slug
+    _Handler.locale = locale
+    _Handler.project = project
     _Handler.data_dir = data_dir
     _Handler.strings = ready_strings
     _Handler.current_index = 0

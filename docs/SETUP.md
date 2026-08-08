@@ -4,10 +4,10 @@
 
 ## System Requirements
 
-- **Python 3.10+** (stdlib only, no pip packages)
-- **Internet** (for fetching from translate.wordpress.org)
-- **Browser** (for the submit helper)
-- **AI-powered IDE or agent** (for translation)
+- **Python 3.10+** (stdlib only, zero external pip packages)
+- **Internet Connection** (for fetching from `translate.wordpress.org`)
+- **Web Browser** (for the submit helper interface)
+- **AI Environment** (Cursor, Antigravity, Kiro, Windsurf, Claude, ChatGPT, etc.)
 
 ---
 
@@ -16,10 +16,10 @@
 ### macOS
 
 ```bash
-# Check
+# Check installed version
 python3 --version
 
-# Install via Homebrew (if needed)
+# Install/update via Homebrew
 brew install python3
 ```
 
@@ -31,67 +31,68 @@ sudo apt update && sudo apt install python3
 
 ### Windows
 
-Download from [python.org/downloads](https://www.python.org/downloads/). Check "Add Python to PATH" during install.
+Download from [python.org/downloads](https://www.python.org/downloads/). Ensure "Add Python to PATH" is checked during installation.
 
 ---
 
-## Project Setup
+## Installation & Setup
 
 ```bash
-git clone <repo-url> wp-ml-translation
-cd wp-ml-translation
-python3 wp-ml-translate.py status
+git clone https://github.com/ajithrn/wp-translate-ai.git
+cd wp-translate-ai
+python3 wp-translate-ai.py status
 ```
 
-No `pip install`, no virtual env, no build step.
+No `pip install`, no virtualenv, no external build steps.
 
 ---
 
 ## AI Agent Setup
 
-This tool works with any AI-powered coding environment that reads workspace files. The `AGENTS.md` file in the project root gives the AI all the context it needs.
+This toolkit is designed for **Zero-API-Key** operation. It works natively with any AI-powered coding assistant that reads workspace context. The `AGENTS.md` file in the root directory instructs AI agents automatically.
 
-**Compatible with:**
+**Natively Supported IDEs & Agents:**
+- Antigravity
 - Cursor
 - Kiro
-- Antigravity
 - Windsurf
-- Cline / Roo Code
-- Any IDE with AI chat that reads workspace files
+- Claude Code / Cline / Roo Code
 
-**Manual workflow (any AI):**
-- Claude, ChatGPT, Gemini, or any chat interface
-- Run `python3 wp-ml-translate.py translate <slug>`
-- Copy `data/<slug>/prompt.md` content → paste to AI → save output as `data/<slug>/response.json`
+**Manual Workflow (Any AI Chat UI):**
+- ChatGPT, Claude, Gemini, etc.
+- Run `python3 wp-translate-ai.py translate <slug> --locale <locale>`
+- Copy `data/<slug>/<locale>/prompt.md` content -> paste to AI -> save response as `data/<slug>/<locale>/response.json`
 
 ---
 
-## GlotPress Account
+## GlotPress Account Setup
 
-Needed only for **submitting** (not for fetching or translating):
+Needed only for **submitting** translations to WordPress.org (not required for fetching or translating):
 
-1. Create account at [login.wordpress.org](https://login.wordpress.org/)
+1. Create a free account at [login.wordpress.org](https://login.wordpress.org/)
 2. Log in at [translate.wordpress.org](https://translate.wordpress.org/)
-3. Now you can suggest translations
+3. You can now submit translation suggestions via the browser helper (`http://localhost:8787`).
 
 ---
 
 ## Verify Setup
 
 ```bash
-python3 --version          # 3.10+
-python3 wp-ml-translate.py fetch twentyten    # should fetch strings
-python3 wp-ml-translate.py status             # should show counts
+python3 --version                             # Must be 3.10+
+python3 wp-translate-ai.py add-locale ml      # Should download official terms & initialize locale
+python3 wp-translate-ai.py fetch twentyten --locale ml   # Should scrape & parse pending strings
+python3 wp-translate-ai.py status              # Should display translation status table
+python3 tests/test_suite.py                  # Should run automated E2E test suite (20 tests)
 ```
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `python3: command not found` | Install Python (see above) |
-| `HTTPError: 404` | Wrong slug — check at translate.wordpress.org |
-| `ConnectionError` / timeout | Check internet, retry later |
-| Browser doesn't open | Go to `http://localhost:8787` manually |
-| `'<slug>' കണ്ടെത്തിയില്ല` | Run `fetch` first |
+| Problem | Solution |
+| :--- | :--- |
+| `python3: command not found` | Install Python 3.10+ (see instructions above) |
+| `HTTPError: 404` | Invalid project slug/type. Check exact URL at translate.wordpress.org |
+| `ConnectionError` / Timeout | Check internet connection or retry in a few moments |
+| Submit server browser tab doesn't open | Open `http://localhost:8787` manually in your browser |
+| Project not found in `data/` | Run `python3 wp-translate-ai.py fetch <slug>` first |

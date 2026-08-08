@@ -1,6 +1,6 @@
-# Architecture — wp-ml-translate
+# Architecture — wp-translate-ai
 
-Technical documentation for how the system works internally.
+Technical documentation for the internal system design of **`wp-translate-ai`**.
 
 ---
 
@@ -8,37 +8,47 @@ Technical documentation for how the system works internally.
 
 ```mermaid
 graph TD
-    CLI["wp-ml-translate.py<br/>(CLI router)"]
+    CLI["wp-translate-ai.py<br/>(CLI router)"]
 
     CLI --> init
+    CLI --> add_locale["add-locale / create-locale"]
     CLI --> fetch
+    CLI --> fetch_glossary["fetch-glossary"]
     CLI --> translate
     CLI --> apply
     CLI --> submit
+    CLI --> config["config.json<br/>lib/config.py"]
 
     init --> terminal["Interactive terminal"]
+    add_locale --> glossary["lib/glossary.py<br/>(init_locale)"]
     fetch --> fetcher["lib/fetcher.py"]
+    fetch_glossary --> glossary
     translate --> translator["lib/translator.py"]
     apply --> translator
     submit --> submitter["lib/submitter.py"]
 
     fetcher --> glotpress["GlotPress<br/>(scrape)"]
-    translator --> context["context/<br/>prompt-template.md"]
-    translator --> datadir["data/&lt;slug&gt;/<br/>strings.json"]
+    glossary --> glotpress_glossary["GlotPress Glossary<br/>(export & scrape)"]
+    translator --> context["context/prompt-template.md &<br/>context/locales/&lt;locale&gt;/"]
+    translator --> datadir["data/&lt;slug&gt;/&lt;locale&gt;/<br/>strings.json"]
     submitter --> browser["Browser<br/>localhost:8787"]
 ```
+
+---
 
 ## Data Flow (Overview)
 
 ```mermaid
 flowchart LR
-    A["URL / Slug"] --> B["Fetch"]
+    A["URL / Slug / --locale"] --> B["Add Locale & Fetch"]
     B --> C["Translate"]
-    C --> D["AI"]
+    C --> D["AI IDE Agent"]
     D --> E["Apply"]
     E -->|"repeat"| C
-    E --> F["Submit"]
+    E --> F["Submit Helper"]
 ```
+
+---
 
 ## Data Flow (Detailed)
 
@@ -46,35 +56,36 @@ flowchart LR
 flowchart TD
     start(["User gives URL or slug"]) --> fetch
 
-    subgraph fetch["FETCH"]
+    subgraph fetch["FETCH & LOCALE INIT"]
         direction TB
-        f1["Parse URL → type + slug"]
+        f0["Auto-init locale context if missing<br/>(context/locales/locale/)"]
+        f1["Parse URL & resolve locale"]
         f2["Call GlotPress API for stats"]
         f3["Scrape HTML pages for<br/>pending strings"]
-        f4[("data/slug/strings.json")]
-        f1 --> f2 --> f3 --> f4
+        f4[("data/slug/locale/strings.json")]
+        f0 --> f1 --> f2 --> f3 --> f4
     end
 
     fetch --> translate
 
     subgraph translate["TRANSLATE"]
         direction TB
-        t1["Load pending strings<br/>from strings.json"]
+        t1["Load pending strings<br/>from data/slug/locale/strings.json"]
         t2["Select next batch of N"]
-        t_ctx[/"context/prompt-template.md<br/>(rules + glossary)"/]
-        t3["Assemble full prompt:<br/>rules + glossary + strings"]
-        t4[("data/slug/prompt.md")]
+        t_ctx[/"context/prompt-template.md &<br/>context/locales/locale/prompt-template.md"/]
+        t3["Assemble full prompt:<br/>global rules + locale rules + glossary + strings"]
+        t4[("data/slug/locale/prompt.md")]
         t1 --> t2 --> t3 --> t4
         t_ctx --> t3
     end
 
     translate --> userai
 
-    subgraph userai["USER + AI"]
+    subgraph userai["USER + AI AGENT"]
         direction TB
-        u1["AI reads prompt.md"]
-        u2["AI generates Malayalam<br/>translations as JSON"]
-        u3[("data/slug/response.json")]
+        u1["AI Agent reads prompt.md"]
+        u2["AI generates target language<br/>translations as JSON"]
+        u3[("data/slug/locale/response.json")]
         u1 --> u2 --> u3
     end
 
@@ -82,7 +93,7 @@ flowchart TD
 
     subgraph apply["APPLY"]
         direction TB
-        a1["Load response.json"]
+        a1["Load data/slug/locale/response.json"]
         a2["Match translations by ID<br/>→ merge into strings.json"]
         a3["Set status = ready"]
         a4["Archive response file"]
@@ -105,110 +116,71 @@ flowchart TD
     end
 ```
 
-## Per-Project Data (`data/<slug>/`)
+---
 
-Each project gets its own folder:
+## Per-Project Data (`data/<slug>/<locale>/`)
 
-```
+Each project and locale combination gets its own scoped directory:
+
+```text
 data/
 ├── twentyten/
-│   ├── strings.json           # Main data file
-│   ├── prompt.md              # Latest generated prompt (gitignored)
-│   ├── response.json          # AI output before apply (gitignored)
-│   └── response_applied.json  # Archived after apply (gitignored)
-├── twentytwentyfour/
-│   └── ...
+│   ├── ml/
+│   │   ├── strings.json           # Main project data for Malayalam
+│   │   ├── prompt.md              # Latest generated AI prompt (gitignored)
+│   │   ├── response.json          # AI output before apply (gitignored)
+│   │   └── response_applied.json  # Archived after apply (gitignored)
+│   └── hi/
+│       └── strings.json           # Main project data for Hindi
+├── gutenberg/
+│   └── stable/
+│       └── ml/
+│           └── strings.json
 └── woocommerce/
-    └── ...
+    └── hi/
+        └── strings.json
 ```
 
-### strings.json format
+---
 
-```json
-{
-  "project": {
-    "slug": "twentyten",
-    "name": "Twenty Ten",
-    "type": "wp-themes",
-    "url": "https://translate.wordpress.org/projects/wp-themes/twentyten/ml/default/",
-    "fetched_at": "2026-08-07T...",
-    "stats": {
-      "total": 109,
-      "translated": 84,
-      "pending": 25,
-      "percent": 77
-    }
-  },
-  "strings": [
-    {
-      "id": "315232",
-      "status": "untranslated",
-      "priority": "high",
-      "context": "",
-      "original": "The 2010 theme...",
-      "plural": "",
-      "references": "style.css:0",
-      "comment": "Description of the theme",
-      "glossary_hits": {"theme": "തീം", "WordPress": "വേഡ്പ്രസ്സ്"},
-      "placeholders": [],
-      "translation": "...",
-      "translation_status": "ready",
-      "submitted": false,
-      "permalink": "https://..."
-    }
-  ]
-}
+## Modular Locale Architecture (`context/locales/`)
+
+Rules and glossaries are decoupled per locale:
+
+```text
+context/
+├── prompt-template.md         # Global technical & placeholder rules
+└── locales/
+    ├── ml/
+    │   ├── prompt-template.md # Native register & Malayalam style guide
+    │   └── glossary.json      # Auto-fetched GlotPress official terms
+    └── hi/
+        ├── prompt-template.md # Native register & Hindi style guide
+        └── glossary.json      # Auto-fetched GlotPress official terms
 ```
 
-### String status lifecycle
-
-```mermaid
-stateDiagram-v2
-    pending --> ready
-    ready --> submitted
-    ready --> skipped
-```
+---
 
 ## Components
 
-### Fetcher (`lib/fetcher.py`)
+### Configuration (`config.json` & `lib/config.py`)
+- Reads global settings (`default_locale`, `default_batch_size`, `user_agent`).
+- Resolves CLI `--locale` arguments and fallback values.
 
-- **URL parsing**: Handles full URLs, locale URLs, type/slug paths, bare slugs
-- **API**: `/api/projects/<type>/<slug>` for stats
-- **Scraping**: HTML table pagination, 15 rows/page, 0.7s delay between requests
-- **Extracts**: original text, plural, context, references, comments, glossary hits, placeholders
+### Fetcher (`lib/fetcher.py`)
+- Scrapes pending strings from any GlotPress project.
+- Automatically discovers nested sub-projects (e.g. `gutenberg/stable`).
+
+### Glossary Manager (`lib/glossary.py`)
+- Fetches official GlotPress glossaries for any target locale.
+- Stores terms locally as `context/locales/<locale>/glossary.json`.
 
 ### Translator (`lib/translator.py`)
-
-- **`generate_prompt()`**: Assembles prompt-template.md + batch of strings → prompt.md
-- **`apply_translations()`**: Parses AI JSON response, merges into strings.json, handles code block wrappers
+- Generates `prompt.md` using the target locale template and official glossary.
+- Parses AI response JSON and updates `strings.json`.
 
 ### Submitter (`lib/submitter.py`)
+- Embedded single-page HTML submit app (zero dependencies).
+- Runs HTTP server on `http://localhost:8787`.
+- Updates submission progress in `strings.json`.
 
-- Embedded single-page HTML app (no external dependencies)
-- HTTP server with `/api/state`, `/api/done`, `/api/skip` endpoints
-- Saves state to strings.json after every action
-- Keyboard shortcuts: O (open+copy), N (done+next), S (skip)
-
-## URL Parsing Logic
-
-```python
-Input                                          → (type, slug)
-"twentyten"                                    → ("wp-themes", "twentyten")
-"wp-plugins/woocommerce"                       → ("wp-plugins", "woocommerce")
-".../projects/wp-themes/twentyten/ml/default/" → ("wp-themes", "twentyten")
-".../locale/ml/default/wp-themes/twentyten/"   → ("wp-themes", "twentyten")
-".../locale/ml/default/wp-themes/?filter=..."  → ERROR (listing page)
-```
-
-## Translation Quality
-
-All quality control is in `context/prompt-template.md`:
-- Strict rules (no English, natural flow, preserve format)
-- Mandatory glossary table
-- Style guide per context type
-- Good/bad examples
-- Format preservation examples
-- Common mistakes table
-
-This file is embedded in every generated prompt, ensuring consistent quality regardless of which AI agent does the translation.
