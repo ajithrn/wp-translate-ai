@@ -10,10 +10,6 @@ __pycache__/
 # Archive (old CSV-based project)
 archive/
 
-# Temporary/generated files
-data/*/prompt.md
-data/*/response.json
-data/*/response_applied.json
+# Generated project data
+data/
 
-# Project data (regeneratable via fetch)
-data/*/strings.json

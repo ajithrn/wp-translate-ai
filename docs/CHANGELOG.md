@@ -1,6 +1,16 @@
 # Changelog
 
+## v1.1.0 — 2026-08-09
+
+### Added & Improved
+
+- **Sub-project support** — automatically detect and handle nested sub-project paths (e.g., `wp-plugins/gutenberg/stable`, `wp-plugins/gutenberg/dev`) in `fetcher` and CLI commands.
+- **Improved completion UX** — `translate` command now detects when all local translations are ready and prompts the user directly to run `submit`.
+- **Git ignore updates** — `.gitignore` updated to recursively exclude all generated project data subdirectories.
+- **Agent workflow updates** — `AGENTS.md` updated to direct agents to launch submission when 100% of strings are translated locally.
+
 ## v1.0.0 — 2026-08-07
+
 
 Initial release of wp-ml-translate toolkit.
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
+
 """
-wp-ml-translate — WordPress Malayalam Translation Toolkit
+wp-ml-translate -- WordPress Malayalam Translation Toolkit
 
 Usage:
     python3 wp-ml-translate.py init                   # Interactive project setup
@@ -11,9 +14,11 @@ Usage:
     python3 wp-ml-translate.py status [slug]          # Show progress
 """
 
-from __future__ import annotations
+__version__ = "1.1.0"
 
 import json
+
+
 import sys
 from pathlib import Path
 
@@ -27,10 +32,11 @@ def _get_projects() -> list[str]:
     """Get list of project slugs that have strings.json in data/."""
     if not DATA_DIR.exists():
         return []
-    return sorted([
-        d.name for d in DATA_DIR.iterdir()
-        if d.is_dir() and (d / "strings.json").exists()
-    ])
+    res = []
+    for p in DATA_DIR.rglob("strings.json"):
+        rel = p.parent.relative_to(DATA_DIR)
+        res.append(str(rel))
+    return sorted(res)
 
 
 def _pick_slug(args: list[str], action_desc: str = "process") -> str | None:
@@ -72,10 +78,11 @@ def _pick_slug(args: list[str], action_desc: str = "process") -> str | None:
 
 
 def cmd_init(args):
-    """Interactive onboarding — set up a new project to translate."""
+    """Interactive onboarding -- set up a new project to translate."""
     print("\n" + "=" * 50)
-    print("  wp-ml-translate — New Project Setup")
+    print("  wp-ml-translate -- New Project Setup")
     print("=" * 50 + "\n")
+
 
     print("  Project type?")
     print("    1. Theme (wp-themes)")
@@ -201,15 +208,17 @@ def cmd_status(args):
 
     proj_dirs = []
     if args:
-        d = DATA_DIR / args[0]
+        target = args[0].strip("/")
+        d = DATA_DIR / target
         if d.exists() and (d / "strings.json").exists():
             proj_dirs = [d]
-        else:
+        elif d.exists():
+            proj_dirs = sorted([p.parent for p in d.rglob("strings.json")])
+        if not proj_dirs:
             print(f"  '{args[0]}' not found.")
             return 1
     else:
-        proj_dirs = sorted([d for d in DATA_DIR.iterdir()
-                           if d.is_dir() and (d / "strings.json").exists()])
+        proj_dirs = sorted([p.parent for p in DATA_DIR.rglob("strings.json")])
 
     if not proj_dirs:
         print("  No data found. Run 'fetch' first.")

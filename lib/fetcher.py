@@ -84,6 +84,13 @@ def _api_stats(proj_type: str, slug: str) -> dict:
                 "fuzzy": int(ts.get("fuzzy_count", 0)),
                 "percent": int(ts.get("percent_translated", 0)),
             }
+    if data.get("sub_projects"):
+        sub_slugs = [sp["slug"] for sp in data["sub_projects"]]
+        for target in ["stable", "dev"]:
+            if target in sub_slugs:
+                res = _api_stats(proj_type, f"{slug}/{target}")
+                res["sub_slug"] = f"{slug}/{target}"
+                return res
     return {"name": name, "total": 0, "translated": 0, "untranslated": 0,
             "waiting": 0, "fuzzy": 0, "percent": 0}
 
@@ -218,6 +225,10 @@ def fetch_project(input_str: str, data_dir: Path) -> Path | None:
     """Main entry: fetch pending strings → save JSON in data/<slug>/strings.json."""
     proj_type, slug, url = parse_input(input_str)
     stats = _api_stats(proj_type, slug)
+
+    if "sub_slug" in stats:
+        slug = stats["sub_slug"]
+        url = f"{BASE}/projects/{proj_type}/{slug}/{LOCALE}/{SET_SLUG}/"
 
     pending = stats["untranslated"] + stats["waiting"] + stats["fuzzy"]
     print(f"  {stats['name']} — {stats['percent']}% ({pending} pending)")

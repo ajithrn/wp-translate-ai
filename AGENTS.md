@@ -77,7 +77,9 @@ The tool auto-detects project type and slug from any URL format:
 
 1. Check if `data/<slug>/strings.json` exists
    - If NOT: tell the user "ഈ പ്രോജക്ട് ഇതുവരെ fetch ചെയ്തിട്ടില്ല. URL നൽകൂ." and stop
-2. Go to step 3 above (skip fetch)
+2. Run `python3 wp-ml-translate.py status <slug>`
+   - If **Pending == 0** (all strings translated locally): launch submission with `python3 wp-ml-translate.py submit <slug>`
+   - If **Pending > 0**: proceed with step 3 above (translate & apply next batch)
 
 ### When user says "show status" or "what's the progress":
 
@@ -87,6 +89,7 @@ Run: `python3 wp-ml-translate.py status`
 
 Run: `python3 wp-ml-translate.py submit <slug>`
 Explain the browser workflow to the user.
+
 
 ### When user says "review <slug>":
 

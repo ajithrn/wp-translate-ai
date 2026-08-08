@@ -42,8 +42,15 @@ def generate_prompt(slug: str, data_dir: Path, context_dir: Path, batch_size: in
     # Get untranslated strings
     pending = [s for s in strings if s["translation_status"] == "pending"]
     if not pending:
-        print("  ✓ Nothing left to translate!")
+        submitted = sum(1 for s in strings if s.get("submitted"))
+        if submitted < len(strings):
+            print(f"  ✓ All {len(strings)} strings have been translated locally!")
+            print(f"  ➜ Next step: Submit translations to GlotPress ({len(strings) - submitted} remaining to submit):")
+            print(f"     python3 wp-ml-translate.py submit {slug}")
+        else:
+            print("  ✓ All translations completed and submitted!")
         return
+
 
     batch = pending[:batch_size]
     print(f"  {len(pending)} pending, {len(batch)} in this batch")
