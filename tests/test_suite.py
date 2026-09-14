@@ -115,7 +115,13 @@ def run_tests():
     # Read strings from data/twentyten/ml/strings.json to create mock response
     with open(data_dir / "twentyten" / "ml" / "strings.json", "r", encoding="utf-8") as f:
         p_data = json.load(f)
-    
+
+    # Ensure clean unsubmitted state for test items
+    for item in p_data["strings"]:
+        item["submitted"] = False
+    with open(data_dir / "twentyten" / "ml" / "strings.json", "w", encoding="utf-8") as f:
+        json.dump(p_data, f, ensure_ascii=False, indent=2)
+
     real_translations = []
     test_ids = []
     for item in p_data["strings"][:5]:
@@ -124,7 +130,7 @@ def run_tests():
             "id": item["id"],
             "translation": f"മലയാളം പരിഭാഷ {item['original']}"
         })
-    
+
     resp_file = data_dir / "twentyten" / "ml" / "response.json"
     with open(resp_file, "w", encoding="utf-8") as f:
         json.dump(real_translations, f, ensure_ascii=False, indent=2)
@@ -158,6 +164,71 @@ def run_tests():
     
     submitted_count = sum(1 for s in post_sub_data["strings"] if s.get("submitted"))
     assert_true(submitted_count == 1, f"1 string marked as submitted in strings.json")
+    print()
+
+    # -------------------------------------------------------------
+    # Test 8: Dual Singular and Plural Support
+    # -------------------------------------------------------------
+    print("--- Test 8: Dual Singular & Plural Handling ---")
+    plural_test_slug = "plural_test"
+    plural_test_dir = data_dir / plural_test_slug / "ml"
+    plural_test_dir.mkdir(parents=True, exist_ok=True)
+
+    mock_plural_project = {
+        "project": {"name": "Plural Test", "type": "wp-plugins", "locale": "ml"},
+        "strings": [
+            {
+                "id": "99901",
+                "status": "untranslated",
+                "priority": "normal",
+                "context": "",
+                "original": "Activate %d theme",
+                "plural": "Activate %d themes",
+                "translation": "",
+                "plural_translation": "",
+                "translation_status": "pending",
+                "submitted": False,
+                "permalink": "https://example.com/test/99901"
+            }
+        ]
+    }
+    with open(plural_test_dir / "strings.json", "w", encoding="utf-8") as f:
+        json.dump(mock_plural_project, f, indent=2)
+
+    # 1. Test prompt generation includes plural_translation
+    generate_prompt(plural_test_slug, data_dir, context_dir, batch_size=1, target_locale="ml")
+    prompt_file = plural_test_dir / "prompt.md"
+    assert_true(prompt_file.exists(), "Plural prompt file generated")
+    prompt_text = prompt_file.read_text(encoding="utf-8")
+    assert_true("plural_translation" in prompt_text, "Prompt includes plural_translation in schema")
+
+    # 2. Test applying dual translation
+    mock_resp = [
+        {
+            "id": "99901",
+            "translation": "%d തീം സജീവമാക്കുക",
+            "plural_translation": "%d തീമുകൾ സജീവമാക്കുക"
+        }
+    ]
+    with open(plural_test_dir / "response.json", "w", encoding="utf-8") as f:
+        json.dump(mock_resp, f, ensure_ascii=False, indent=2)
+
+    apply_translations(plural_test_slug, data_dir, locale="ml")
+    with open(plural_test_dir / "strings.json", "r", encoding="utf-8") as f:
+        applied_plural_data = json.load(f)
+
+    plural_item = applied_plural_data["strings"][0]
+    assert_true(plural_item["translation"] == "%d തീം സജീവമാക്കുക", "Singular translation correctly applied")
+    assert_true(plural_item["plural_translation"] == "%d തീമുകൾ സജീവമാക്കുക", "Plural translation correctly applied")
+
+    # 3. Test submit helper load strings
+    p_meta, p_ready = _load_strings(plural_test_slug, data_dir, locale="ml")
+    assert_true(len(p_ready) == 1, "Submitter loaded plural test string")
+    assert_true(p_ready[0].get("plural") == "Activate %d themes", "Loaded string has plural")
+    assert_true(p_ready[0].get("plural_translation") == "%d തീമുകൾ സജീവമാക്കുക", "Loaded string has plural_translation")
+
+    # Cleanup plural_test dir
+    shutil.rmtree(data_dir / plural_test_slug)
     print()
 
     # -------------------------------------------------------------

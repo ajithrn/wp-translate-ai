@@ -198,6 +198,7 @@ def _parse_page(page_html: str, proj_type: str, slug: str, locale: str | None = 
             "glossary_hits": glossary,
             "placeholders": _extract_ph(singular + " " + plural),
             "translation": "",
+            "plural_translation": "",
             "translation_status": "pending",
             "submitted": False,
             "permalink": f"{BASE}/projects/{proj_type}/{slug}/{loc}/{SET_SLUG}/?filters%5Boriginal_id%5D={oid}",

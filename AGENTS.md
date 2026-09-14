@@ -78,9 +78,11 @@ The tool auto-detects project type and slug from any URL format:
 6. Save output as `data/<slug>/<locale>/response.json` in this exact format:
    ```json
    [
-     {"id": "12345", "translation": "..."}
+     {"id": "12345", "translation": "..."},
+     {"id": "67890", "translation": "<singular>", "plural_translation": "<plural>"}
    ]
    ```
+   *(For items with a `"plural"` field, provide both `"translation"` for singular and `"plural_translation"` for plural).*
 7. Run: `python3 wp-translate-ai.py apply <slug>`
 8. Run: `python3 wp-translate-ai.py status <slug>`
 9. **Present Concise Summary & Next Steps**:

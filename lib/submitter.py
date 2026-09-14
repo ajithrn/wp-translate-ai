@@ -139,6 +139,37 @@ def _build_html(slug: str, project: dict) -> str:
             max-height: 200px;
             overflow-y: auto;
         }}
+        .form-badge {{
+            display: inline-block;
+            padding: 2px 8px;
+            background: #2a3a5e;
+            color: #81d4fa;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }}
+        .form-block {{
+            margin-bottom: 12px;
+        }}
+        .form-block:last-child {{
+            margin-bottom: 0;
+        }}
+        .copy-btn-sm {{
+            padding: 4px 10px;
+            border: 1px solid #4fc3f7;
+            background: transparent;
+            color: #4fc3f7;
+            border-radius: 4px;
+            font-size: 0.75em;
+            cursor: pointer;
+            float: right;
+            margin-top: -2px;
+            transition: all 0.2s;
+        }}
+        .copy-btn-sm:hover {{
+            background: #4fc3f725;
+        }}
         .meta-row {{
             display: flex;
             gap: 15px;
@@ -258,24 +289,68 @@ def _build_html(slug: str, project: dict) -> str:
             }}
 
             const s = data.current;
-            const origDisplay = escapeHtml(s.original).substring(0, 500);
-            const transDisplay = escapeHtml(s.translation);
+            const hasPlural = Boolean(s.plural && s.plural.trim());
+            const origSingular = escapeHtml(s.original);
+            const origPlural = hasPlural ? escapeHtml(s.plural) : '';
+            const transSingular = escapeHtml(s.translation || '');
+            const transPlural = hasPlural ? escapeHtml(s.plural_translation || s.translation || '') : '';
 
-            document.getElementById('content').innerHTML = `
-                <div class="card">
-                    <div class="card-label">Original String</div>
-                    <span class="theme-badge">{slug}</span>
-                    <span class="meta-item" style="margin-left:10px"><strong>ID:</strong> ${{s.id}}</span>
-                    <div class="original-text" style="margin-top:10px">${{origDisplay}}</div>
-                    ${{s.context ? `<div class="meta-row"><div class="meta-item"><strong>Context:</strong> ${{escapeHtml(s.context)}}</div></div>` : ''}}
-                </div>
+            let origHtml = '';
+            if (hasPlural) {{
+                origHtml = `
+                    <div class="form-block" style="margin-top:10px">
+                        <span class="form-badge">Singular</span>
+                        <div class="original-text">${{origSingular}}</div>
+                    </div>
+                    <div class="form-block" style="margin-top:12px">
+                        <span class="form-badge">Plural</span>
+                        <div class="original-text">${{origPlural}}</div>
+                    </div>
+                `;
+            }} else {{
+                origHtml = `<div class="original-text" style="margin-top:10px">${{origSingular}}</div>`;
+            }}
 
-                <div class="card">
-                    <div class="card-label">Target Translation ({loc})</div>
-                    <div class="translation-text">${{transDisplay}}</div>
-                </div>
+            let transHtml = '';
+            if (hasPlural) {{
+                transHtml = `
+                    <div class="form-block">
+                        <div style="margin-bottom:6px; overflow:hidden;">
+                            <span class="form-badge">Singular</span>
+                            <button class="copy-btn-sm" onclick="copySingular()">Copy Singular</button>
+                        </div>
+                        <div class="translation-text">${{transSingular}}</div>
+                    </div>
+                    <div class="form-block" style="margin-top:14px">
+                        <div style="margin-bottom:6px; overflow:hidden;">
+                            <span class="form-badge">Plural</span>
+                            <button class="copy-btn-sm" onclick="copyPlural()">Copy Plural</button>
+                        </div>
+                        <div class="translation-text">${{transPlural}}</div>
+                    </div>
+                `;
+            }} else {{
+                transHtml = `<div class="translation-text">${{transSingular}}</div>`;
+            }}
 
-                <div class="actions">
+            let actionsHtml = '';
+            if (hasPlural) {{
+                actionsHtml = `
+                    <button class="btn btn-secondary" onclick="openAndCopy()">
+                        Open GlotPress & Copy (Singular)
+                    </button>
+                    <button class="btn btn-secondary" style="background:#81d4fa" onclick="copyPlural()">
+                        Copy Plural
+                    </button>
+                    <button class="btn btn-primary" onclick="markDoneNext()">
+                        Done \\u2192 Next
+                    </button>
+                    <button class="btn btn-skip" onclick="skipNext()">
+                        Skip
+                    </button>
+                `;
+            }} else {{
+                actionsHtml = `
                     <button class="btn btn-secondary" onclick="openAndCopy()">
                         Open GlotPress & Copy
                     </button>
@@ -285,9 +360,32 @@ def _build_html(slug: str, project: dict) -> str:
                     <button class="btn btn-skip" onclick="skipNext()">
                         Skip
                     </button>
+                `;
+            }}
+
+            const keyboardHint = hasPlural
+                ? 'Shortcuts: <kbd>O</kbd> Open & Copy Singular | <kbd>P</kbd> Copy Plural | <kbd>N</kbd> Done \\u2192 Next | <kbd>S</kbd> Skip'
+                : 'Shortcuts: <kbd>O</kbd> Open & Copy | <kbd>N</kbd> Done \\u2192 Next | <kbd>S</kbd> Skip';
+
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <div class="card-label">Original String</div>
+                    <span class="theme-badge">{slug}</span>
+                    <span class="meta-item" style="margin-left:10px"><strong>ID:</strong> ${{s.id}}</span>
+                    ${{origHtml}}
+                    ${{s.context ? `<div class="meta-row"><div class="meta-item"><strong>Context:</strong> ${{escapeHtml(s.context)}}</div></div>` : ''}}
+                </div>
+
+                <div class="card">
+                    <div class="card-label">Target Translation ({loc})</div>
+                    ${{transHtml}}
+                </div>
+
+                <div class="actions">
+                    ${{actionsHtml}}
                 </div>
                 <div class="keyboard-hint">
-                    Shortcuts: <kbd>O</kbd> Open & Copy | <kbd>N</kbd> Done \\u2192 Next | <kbd>S</kbd> Skip
+                    ${{keyboardHint}}
                 </div>
             `;
         }}
@@ -297,20 +395,37 @@ def _build_html(slug: str, project: dict) -> str:
             return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }}
 
-        async function openAndCopy() {{
-            if (!data.current) return;
+        async function copyToClipboard(text, msg) {{
             try {{
-                await navigator.clipboard.writeText(data.current.translation);
-                showToast('Translation copied to clipboard!');
+                await navigator.clipboard.writeText(text);
+                showToast(msg || 'Copied to clipboard!');
             }} catch(e) {{
                 const ta = document.createElement('textarea');
-                ta.value = data.current.translation;
+                ta.value = text;
                 document.body.appendChild(ta);
                 ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
-                showToast('Translation copied to clipboard!');
+                showToast(msg || 'Copied to clipboard!');
             }}
+        }}
+
+        async function copySingular() {{
+            if (!data || !data.current) return;
+            await copyToClipboard(data.current.translation || '', 'Singular translation copied to clipboard!');
+        }}
+
+        async function copyPlural() {{
+            if (!data || !data.current) return;
+            const text = data.current.plural_translation || data.current.translation || '';
+            await copyToClipboard(text, 'Plural translation copied to clipboard!');
+        }}
+
+        async function openAndCopy() {{
+            if (!data || !data.current) return;
+            const text = data.current.translation || '';
+            const msg = data.current.plural ? 'Singular translation copied to clipboard!' : 'Translation copied to clipboard!';
+            await copyToClipboard(text, msg);
             window.open(data.current.permalink, '_blank');
         }}
 
@@ -338,6 +453,7 @@ def _build_html(slug: str, project: dict) -> str:
         document.addEventListener('keydown', (e) => {{
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if (e.key === 'o' || e.key === 'O') openAndCopy();
+            if (e.key === 'p' || e.key === 'P') copyPlural();
             if (e.key === 'n' || e.key === 'N') markDoneNext();
             if (e.key === 's' || e.key === 'S') skipNext();
         }});

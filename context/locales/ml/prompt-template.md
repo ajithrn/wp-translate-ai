@@ -123,4 +123,4 @@ Correct:  "ക്ഷമിക്കുക, തിരഞ്ഞ പേജ് ക�
 - Check the `references` field to understand context (`comments.php` = comment area, `404.php` = error page, `block-patterns.php` = demo content).
 - Pay attention to `comment` fields containing GlotPress translator hints.
 - Always honor `glossary_hits` matching official terms.
-- For plurals: Malayalam singular/plural distinctions are minimal; provide a single natural translation.
+- For plurals: When a string includes a `plural` form, provide BOTH translations: `translation` for the singular form (e.g., `%d തീം സജീവമാക്കുക`) and `plural_translation` for the plural form (e.g., `%d തീമുകൾ സജീവമാക്കുക`).

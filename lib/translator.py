@@ -129,14 +129,20 @@ def generate_prompt(slug: str, data_dir: Path, context_dir: Path, batch_size: in
     prompt_lines.append("]")
     prompt_lines.append("```\n")
 
+    has_plurals = any(s.get("plural") for s in batch)
+
     prompt_lines.append("## Expected Output\n")
     prompt_lines.append("Return JSON only in this format:\n")
     prompt_lines.append("```json")
     prompt_lines.append("[")
     prompt_lines.append('  {"id": "...", "translation": "..."},')
+    if has_plurals:
+        prompt_lines.append('  {"id": "...", "translation": "<singular>", "plural_translation": "<plural>"},')
     prompt_lines.append("  ...")
     prompt_lines.append("]")
-    prompt_lines.append("```")
+    prompt_lines.append("```\n")
+    if has_plurals:
+        prompt_lines.append("*Note: For strings containing a `plural` field, provide both `translation` (singular form) and `plural_translation` (plural form).*\n")
 
     # Write prompt file in project folder
     prompt_path = proj_dir / "prompt.md"
@@ -169,12 +175,15 @@ def apply_translations(slug: str, data_dir: Path, locale: str | None = None):
         translations = json.loads(content)
 
     # Build lookup
-    tr_map = {item["id"]: item["translation"] for item in translations if item.get("translation")}
+    tr_map = {item["id"]: item for item in translations if item.get("translation")}
 
     applied = 0
     for s in data["strings"]:
         if s["id"] in tr_map:
-            s["translation"] = tr_map[s["id"]]
+            item = tr_map[s["id"]]
+            s["translation"] = item["translation"]
+            if item.get("plural_translation"):
+                s["plural_translation"] = item["plural_translation"]
             s["translation_status"] = "ready"
             applied += 1
 
